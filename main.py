@@ -1,6 +1,7 @@
 import os
 import logging
 import json
+import datetime
 import random
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -205,6 +206,11 @@ def get_top5_profiles(data):
     def extract_date(profile):
         date_str = profile["date_olimp"]
         day, month, year = map(int, date_str.split("."))
+        
+        #проверка, если дата уже прошла, то не учитывать её
+        date = datetime.date(year, month, day)
+        if date < datetime.date.today():
+            return (9999, 12, 31)
         return (year, month, day)
     
     all_profiles.sort(key=extract_date)
