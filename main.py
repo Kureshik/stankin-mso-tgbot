@@ -29,7 +29,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]])
     messages = context.application.bot_data.get("messages")
     welcome_text = messages["welcome"]
-    await msg.reply_text(welcome_text, parse_mode="Markdown", reply_markup=keyboard)
+    if update.message:
+        await msg.reply_text(welcome_text, parse_mode="Markdown", reply_markup=keyboard)
+    else:
+        await msg.edit_text(welcome_text, parse_mode="Markdown", reply_markup=keyboard)
 
 async def about(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
@@ -145,7 +148,7 @@ def build_description(profile):
 
     if cafedras:
         if len(cafedras) == 1:
-            cafedra_text = f"🎓 *Кафедра-организатор:*\n{cafedras[0]}\n\n"
+            cafedra_text = f"🎓 *Кафедра-организатор:*\n{cafedras[0]}\n"
         else:
             cafedra_text = "🎓 *Кафедры-организаторы:*\n"
             for c in cafedras:
@@ -206,7 +209,7 @@ def get_top5_profiles(data):
     def extract_date(profile):
         date_str = profile["date_olimp"]
         day, month, year = map(int, date_str.split("."))
-        
+
         #проверка, если дата уже прошла, то не учитывать её
         date = datetime.date(year, month, day)
         if date < datetime.date.today():
