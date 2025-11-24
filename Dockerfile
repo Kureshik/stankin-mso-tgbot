@@ -18,4 +18,4 @@ COPY . .
 RUN chown -R mso_tgbot_user:mso_tgbot_user /app
 USER mso_tgbot_user
 
-CMD ["python", "bot.py"]
+CMD ["python", "main.py"]
