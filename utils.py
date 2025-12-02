@@ -9,6 +9,7 @@ def build_description(profile):
     description = profile['description']
     date_reg = profile['date_reg']
     date_olimp = profile['date_olimp']
+    time_olimp = profile['time_olimp']
     place = profile['place']
 
     text = f"{ico} *{name}*\n\n"
@@ -36,7 +37,10 @@ def build_description(profile):
         if date_reg: 
             text += f"*Регистрация:* {date_reg}\n"
         if date_olimp: 
-            text += f"*Проведение олимпиады:* {date_olimp}\n"
+            text += f"*Проведение олимпиады:* {date_olimp}"
+            if time_olimp:
+                text += f", в {time_olimp}"
+            text += "\n"
         text += "\n"
     
     if place:
