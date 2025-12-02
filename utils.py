@@ -39,7 +39,7 @@ def build_description(profile):
         if date_olimp: 
             text += f"*Проведение олимпиады:* {date_olimp}"
             if time_olimp:
-                text += f", в {time_olimp}"
+                text += f" в {time_olimp}"
             text += "\n"
         text += "\n"
     
