@@ -34,7 +34,7 @@ async def _async_main():
     app.add_handler(CommandHandler("start", handlers.start))
     #app.add_handler(CommandHandler("reload", handlers.reload_conf))
     #app.add_handler(CommandHandler("stats", handlers.get_statistics))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.handle_text))
+    app.add_handler(MessageHandler(filters.ALL & ~filters.COMMAND, handlers.handle_text))
     app.add_handler(CallbackQueryHandler(handlers.about, pattern="^about$"))
     app.add_handler(CallbackQueryHandler(handlers.get_statistics, pattern="^stats$"))
     app.add_handler(CallbackQueryHandler(handlers.reload_conf, pattern="^reload$"))

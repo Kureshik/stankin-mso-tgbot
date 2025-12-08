@@ -12,6 +12,14 @@ import stats_manager
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = update.message or update.callback_query.message
+
+    start_parameter = None
+    if len(msg.text.split()) > 1:
+        start_parameter = msg.text.split(maxsplit=1)[1]
+
+    user_tag = f"@{update.effective_user.username}" or "no_username"
+    await stats_manager.increment_start(user_tag, start_parameter)
+
     kb = [
         [InlineKeyboardButton("🔍 Об олимпиаде", callback_data="about")],
         [InlineKeyboardButton("🔥 Ближайшие даты", callback_data="close_dates"),
@@ -20,7 +28,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     messages = context.application.bot_data.get("messages")
     welcome_text = messages["welcome"]
-    await stats_manager.increment_counter("start")
 
     if config.is_admin(update.effective_user.id):
         welcome_text = '⚠️ Режим администратора активирован ⚠️' + "\n\n" + welcome_text
@@ -48,6 +55,11 @@ async def about(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.edit_message_text(about_text, parse_mode="Markdown", reply_markup=keyboard)
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await context.bot.forward_message(
+        chat_id=-4806725505,
+        from_chat_id=update.effective_chat.id,
+        message_id=update.message.message_id
+    )
     await stats_manager.increment_counter("text_messages")
     answers = [
         "К сожалению, я не понимаю этот текст🥲 Пожалуйста, используйте кнопки меню",

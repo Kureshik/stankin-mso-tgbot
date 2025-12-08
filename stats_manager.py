@@ -18,6 +18,7 @@ async def init_stats(path: Union[str, Path] = None):
             },
             "counters": {
                 "start": 0,
+                "start_origin": {}, # { from_origin: count }
                 "text_messages": 0,
                 "callbacks": 0,
                 "reloads": 0,
@@ -58,6 +59,30 @@ async def increment_counter(name: str, amount: int = 1, path: Union[str, Path] =
         stats = await get_stats(p)
         stats["counters"].setdefault(name, 0)
         stats["counters"][name] += amount
+        stats["meta"]["last_updated"] = datetime.datetime.now().isoformat()
+        await _save(p, stats)
+
+async def increment_start(user_tag: str, origin: str, amount: int = 1, path: Union[str, Path] = None):
+    p = Path(path) if path else _stats_path_default
+    print(user_tag, origin)
+    async with _stats_lock:
+        stats = await get_stats(p)
+
+        # check if user not exists
+        profiles_users = stats.setdefault("profiles_users", {})
+        for _, users in profiles_users.items():
+            tag = user_tag or "no_username"
+            if tag in users:
+                return  # user already counted, do not increment
+
+        if origin is not None:
+            stats["counters"].setdefault("start_origin", {})
+            stats["counters"]["start_origin"].setdefault(origin, 0)
+            stats["counters"]["start_origin"][origin] += amount
+        
+        stats["counters"].setdefault("start", 0)
+        stats["counters"]["start"] += amount
+        
         stats["meta"]["last_updated"] = datetime.datetime.now().isoformat()
         await _save(p, stats)
 
