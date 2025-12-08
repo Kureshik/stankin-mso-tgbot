@@ -95,18 +95,23 @@ async def get_statistics(update: Update, context: ContextTypes.DEFAULT_TYPE):
     counters = stats.get("counters", {})
     profiles = stats.get("profiles", {})
     lines = []
-    lines.append("Counters:")
+    lines.append("*Counters:*")
     for k, v in counters.items():
-        lines.append(f"- {k}: {v}")
+        if k == "start_origin":
+            lines.append(f"- {k.replace('_', ' ')}:")
+            for origin, cnt in v.items():
+                lines.append(f"    - {origin}: {cnt}")
+        else:
+            lines.append(f"- {k.replace('_', ' ')}: {v}")
     if profiles:
-        lines.append("\nProfiles views (top 10):")
+        lines.append("\n*Profiles views (top 10):*")
         top = sorted(profiles.items(), key=lambda x: x[1], reverse=True)[:10]
         for pid, cnt in top:
             lines.append(f"- {pid}: {cnt}")
     else:
         lines.append("\nProfiles views: none")
 
-    await msg.reply_text("\n".join(lines))
+    await msg.reply_text("\n".join(lines), parse_mode="Markdown")
     await msg.reply_document(document=open("stats.json", "rb"))
 
 async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
