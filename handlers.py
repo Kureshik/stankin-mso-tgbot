@@ -55,11 +55,12 @@ async def about(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.edit_message_text(about_text, parse_mode="Markdown", reply_markup=keyboard)
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await context.bot.forward_message(
-        chat_id=-4806725505,
-        from_chat_id=update.effective_chat.id,
-        message_id=update.message.message_id
-    )
+    if config.LOG_CHAT:
+        await context.bot.forward_message(
+            chat_id=config.LOG_CHAT,
+            from_chat_id=update.effective_chat.id,
+            message_id=update.message.message_id
+        )
     await stats_manager.increment_counter("text_messages")
     answers = [
         "К сожалению, я не понимаю этот текст🥲 Пожалуйста, используйте кнопки меню",
