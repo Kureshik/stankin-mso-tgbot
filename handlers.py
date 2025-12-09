@@ -14,7 +14,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = update.message or update.callback_query.message
 
     start_parameter = None
-    if len(msg.text.split()) > 1:
+    if update.message and len(msg.text.split()) > 1:
         start_parameter = msg.text.split(maxsplit=1)[1]
 
     user_tag = f"@{update.effective_user.username}" or "no_username"
