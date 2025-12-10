@@ -69,8 +69,14 @@ def get_top5_profiles(data):
     all_profiles = []
     for group in data["groups"]:
         for p in group.get("profiles", []):
-            if p.get("date_olimp", "") != "":
-                all_profiles.append(p) # (p, group)
+            # пропускаем профили без даты
+            if p.get("date_olimp", "") == "": continue
+            date_str = p["date_olimp"]
+            day, month, year = map(int, date_str.split("."))
+            date = datetime.date(year, month, day)
+            # пропускаем профили с прошедшей датой
+            if date < datetime.date.today(): continue
+            all_profiles.append(p) # (p, group)
     
     # функция извлечения даты для сортировки
     def extract_date(profile):
