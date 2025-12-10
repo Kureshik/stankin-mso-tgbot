@@ -9,7 +9,6 @@ def build_groups_keyboard(data):
     buttons.append([InlineKeyboardButton("🏠 Домой", callback_data="back_to_home")])
     return InlineKeyboardMarkup(buttons)
 
-
 def build_profiles_keyboard(group):
     """Возвращает InlineKeyboardMarkup для профилей выбранной группы"""
     buttons = []
@@ -28,3 +27,10 @@ def build_top5_profiles_keyboard(profiles):
     # кнопка назад к главному меню
     buttons.append([InlineKeyboardButton("🏠 Домой", callback_data="back_to_home")])
     return InlineKeyboardMarkup(buttons)
+
+def build_results_keyboard(data):
+    """Возвращает InlineKeyboardMarkup для результатов олимпиад"""
+    buttons = []
+    for result in data:
+        buttons.append([InlineKeyboardButton(result["name"], url=result["url"])])
+    return buttons

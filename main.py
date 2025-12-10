@@ -22,6 +22,7 @@ async def _async_main():
 
     profiles = load_data("profiles.json")
     messages = load_data("messages.json")
+    results = load_data("results.json")
 
     # ensure stats file exists
     await stats_manager.init_stats()
@@ -29,6 +30,7 @@ async def _async_main():
     app = Application.builder().token(config.TG_TOKEN).build()
     app.bot_data["profiles_data"] = profiles
     app.bot_data["messages"] = messages
+    app.bot_data["results"] = results
 
     # handlers
     app.add_handler(CommandHandler("start", handlers.start))

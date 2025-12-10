@@ -4,7 +4,7 @@ from telegram.ext import ContextTypes
 
 from data_loader import load_data
 import config
-from keyboards import build_groups_keyboard, build_profiles_keyboard, build_top5_profiles_keyboard
+from keyboards import build_groups_keyboard, build_profiles_keyboard, build_top5_profiles_keyboard, build_results_keyboard
 from utils import build_description, find_group_by_id, find_profile_by_id, get_top5_profiles
 
 import stats_manager
@@ -21,10 +21,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await stats_manager.increment_start(user_tag, start_parameter)
 
     kb = [
-        [InlineKeyboardButton("🔍 Об олимпиаде", callback_data="about")],
+        [InlineKeyboardButton("🔍 Об олимпиаде", callback_data="about"),
+         InlineKeyboardButton("📊 Результаты", callback_data="results")],
         [InlineKeyboardButton("🔥 Ближайшие даты", callback_data="close_dates"),
-        InlineKeyboardButton("✅ Выбрать профиль", callback_data="back_to_groups"),
-    ]]
+        InlineKeyboardButton("✅ Выбрать профиль", callback_data="back_to_groups")]
+    ]
 
     messages = context.application.bot_data.get("messages")
     welcome_text = messages["welcome"]
@@ -79,8 +80,10 @@ async def reload_conf(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await msg.reply_text("Перезагрузка конфигурации...")
     profiles = load_data("profiles.json")
     messages = load_data("messages.json")
+    results = load_data("results.json")
     context.application.bot_data["profiles_data"] = profiles
     context.application.bot_data["messages"] = messages
+    context.application.bot_data["results"] = results
     await stats_manager.increment_counter("reloads")
     await msg.reply_text("Конфигурация перезагружена.")
 
@@ -132,6 +135,23 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # назад к главному меню
     if cd == "back_to_home":
         await start(update, context)
+        return
+    
+    # результаты олимпиад
+    if cd == "results":
+        messages = context.application.bot_data.get("messages")
+        results_text = messages["results"]
+        data = context.application.bot_data.get("results", {})
+        kb = []
+        if data:
+            kb = build_results_keyboard(data)
+        kb.append([InlineKeyboardButton("🌐 Подробнее", url="https://priem.stankin.ru/stud_olymp/"),
+                   InlineKeyboardButton("🏠 Домой", callback_data="back_to_home")
+        ])
+        if data:
+            await query.edit_message_text(results_text, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb))
+        else:
+            await query.edit_message_text("Результатов пока нет, но появятся в ближайшее время.\n\nМы тоже ждем 😔", reply_markup=InlineKeyboardMarkup(kb))
         return
 
     # ближайшие даты олимпиад
