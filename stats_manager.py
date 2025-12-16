@@ -65,8 +65,12 @@ async def increment_counter(name: str, amount: int = 1):
         await _save(p, stats)
 
 async def increment_start(user_id: int, user_tag: str, origin: str):
+    if user_tag == "no_username":
+        return
     p = _stats_path_default
+    user_tag = f'@{user_tag}'
     user_id = str(user_id)
+
     async with _stats_lock:
         stats = await get_stats()
 
@@ -129,6 +133,8 @@ async def collect_user_ids(user_id: int, user_tag: str):
         return
     p = _stats_path_default
     user_id = str(user_id)
+    user_tag = f'@{user_tag}'
+    
     async with _stats_lock:
         stats = await get_stats()
 
@@ -176,3 +182,9 @@ async def deduplicate_usernames(user_id: str, user_tag: str):
                     del users[k]
     await _save(p, stats)
 
+async def get_users_id():
+    async with _stats_lock:
+        stats = await get_stats()
+        users = stats.get("users", {}).keys()
+        filtered_users = filter(lambda uid: not uid.startswith("u"), users)
+        return list(filtered_users)
