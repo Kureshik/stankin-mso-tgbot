@@ -86,7 +86,7 @@ async def increment_start(user_id: int, user_tag: str, origin: str):
 
         # ===================================================
         # ВРЕМЕННО
-        await deduplicate_usernames(user_id, user_tag)
+        await deduplicate_usernames(user_id, user_tag, stats)
         # ВРЕМЕННО
         # ===================================================
 
@@ -134,7 +134,7 @@ async def collect_user_ids(user_id: int, user_tag: str):
     p = _stats_path_default
     user_id = str(user_id)
     user_tag = f'@{user_tag}'
-    
+
     async with _stats_lock:
         stats = await get_stats()
 
@@ -170,17 +170,13 @@ async def collect_user_ids(user_id: int, user_tag: str):
         await _save(p, stats)
 
 
-async def deduplicate_usernames(user_id: str, user_tag: str):
-    p = _stats_path_default
-    async with _stats_lock:
-        stats = await get_stats()
-        users = stats.setdefault("users", {})
+async def deduplicate_usernames(user_id: str, user_tag: str, stats):
+    users = stats.setdefault("users", {})
 
-        for k, v in users.items():
-            if v.get("username") == user_tag:
-                if k != user_id:
-                    del users[k]
-    await _save(p, stats)
+    for k, v in users.items():
+        if v.get("username") == user_tag:
+            if k != user_id:
+                del users[k]
 
 async def get_users_id():
     async with _stats_lock:

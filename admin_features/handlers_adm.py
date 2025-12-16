@@ -148,8 +148,8 @@ async def preview_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = query.data
 
     if data == "go_to_send":
-        # Получаем кол-во пользователей из БД
-        users_count = 1500 # Замените на len(db.get_users())
+        users = await stats_manager.get_users_id()
+        users_count = len(users)
         
         await query.edit_message_text(
             f"⚠️ *ВЫ УВЕРЕНЫ?*\n\n"
@@ -197,7 +197,8 @@ async def run_broadcast_task(admin_chat_id, context: ContextTypes.DEFAULT_TYPE):
     msg_id = context.user_data['broadcast_msg_id']
     from_chat = context.user_data['broadcast_chat_id']
     
-    all_users = stats_manager.get_all_users()
+    users = await stats_manager.get_users_id()
+    users_count = len(users)
     
     success = 0
     blocked = 0
@@ -205,10 +206,12 @@ async def run_broadcast_task(admin_chat_id, context: ContextTypes.DEFAULT_TYPE):
 
     status_msg = await context.bot.send_message(
         chat_id=admin_chat_id, 
-        text=f"🚀 Рассылка началась на {len(all_users)} пользователей..."
+        text=f"🚀 Рассылка началась на {users_count} пользователей..."
     )
 
-    for i, user_id in enumerate(all_users):
+    for i, user_id in enumerate(users):
+        if user_id == admin_chat_id:
+            continue # Пропускаем админа
         try:
             await context.bot.copy_message(
                 chat_id=user_id,
@@ -230,7 +233,7 @@ async def run_broadcast_task(admin_chat_id, context: ContextTypes.DEFAULT_TYPE):
                 await context.bot.edit_message_text(
                     chat_id=admin_chat_id,
                     message_id=status_msg.message_id,
-                    text=f"🚀 Процесс: {i}/{len(all_users)}"
+                    text=f"🚀 Процесс: {i}/{users_count}"
                 )
              except: pass
 
