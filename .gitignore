@@ -215,3 +215,5 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 stats.json
+stats_old.json
+output.json
