@@ -6,6 +6,9 @@ services:
     environment:
       - TG_BOT_TOKEN=${TG_BOT_TOKEN}
       - ADMINS=${ADMINS}
+      - LOG_CHAT=${LOG_CHAT}
     volumes:
-      - ./profiles.json:/app/profiles.json        # persist / override config
-      - ./messages.json:/app/messages.json
+      - ./data/profiles.json:/app/data/profiles.json        # persist / override config
+      - ./data/messages.json:/app/data/messages.json
+      - ./data/results.json:/app/data/results.json
+      - ./data/stats.json:/app/data/stats.json
