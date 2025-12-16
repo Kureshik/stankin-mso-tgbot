@@ -1,15 +1,18 @@
 import logging
 import asyncio
+from telegram import Update
 from telegram.ext import (
     Application,
     CommandHandler,
+    TypeHandler,
     MessageHandler,
+    ContextTypes,
     CallbackQueryHandler,
     filters,
 )
 import config
 from data_loader import load_data
-import handlers
+import handlers, admin_features.handlers_adm
 import stats_manager
 
 logging.basicConfig(level=logging.INFO)
@@ -20,9 +23,9 @@ async def _async_main():
         logger.error("TG_BOT_TOKEN is not set in env")
         return
 
-    profiles = load_data("profiles.json")
-    messages = load_data("messages.json")
-    results = load_data("results.json")
+    profiles = load_data("data/profiles.json")
+    messages = load_data("data/messages.json")
+    results  = load_data("data/results.json")
 
     # ensure stats file exists
     await stats_manager.init_stats()
@@ -33,14 +36,16 @@ async def _async_main():
     app.bot_data["results"] = results
 
     # handlers
+    app.add_handler(TypeHandler(Update, handlers.collect_ids), group=2)
     app.add_handler(CommandHandler("start", handlers.start))
     #app.add_handler(CommandHandler("reload", handlers.reload_conf))
     #app.add_handler(CommandHandler("stats", handlers.get_statistics))
-    app.add_handler(MessageHandler(filters.ALL & ~filters.COMMAND, handlers.handle_text))
     app.add_handler(CallbackQueryHandler(handlers.about, pattern="^about$"))
     app.add_handler(CallbackQueryHandler(handlers.get_statistics, pattern="^stats$"))
     app.add_handler(CallbackQueryHandler(handlers.reload_conf, pattern="^reload$"))
+    app.add_handler(admin_features.handlers_adm.broadcast_handler)
     app.add_handler(CallbackQueryHandler(handlers.callback_handler))
+    app.add_handler(MessageHandler(filters.ALL & ~filters.COMMAND, handlers.handle_text))
 
     await app.initialize()
     await app.start()

@@ -5,37 +5,41 @@ from pathlib import Path
 from typing import Union
 
 _stats_lock = asyncio.Lock()
-_stats_path_default = Path("stats.json")
+_stats_path_default = Path("data/stats.json")
 
 
-async def init_stats(path: Union[str, Path] = None):
-    p = Path(path) if path else _stats_path_default
+async def init_stats():
+    p = _stats_path_default
     if not p.exists():
         default = {
             "meta": {
                 "created_at": datetime.datetime.now().isoformat(),
-                "last_updated": None,
+                "last_updated": None
             },
             "counters": {
                 "start": 0,
-                "start_origin": {}, # { from_origin: count }
                 "text_messages": 0,
+                "start_origin": {}, # { from_origin: count }
                 "callbacks": 0,
-                "reloads": 0,
+                "reloads": 0
             },
-            "profiles": {},        # { profile_id: total_views }
-            "profiles_users": {},  # { profile_id: [unique_user_ids] }
+            "users": {}, # user_id: { "username": username }
+
+            "profiles": {}
+            # profile: {
+            #     "title": title,
+            #     "users": [user_id1, user_id2],
+            #     "views": 0
+            # }
         }
         await _save(p, default)
     return p
-
 
 async def _load(p: Path):
     def _read():
         with p.open("r", encoding="utf-8") as f:
             return json.load(f)
     return await asyncio.to_thread(_read)
-
 
 async def _save(p: Path, data: dict):
     def _write():
@@ -45,67 +49,117 @@ async def _save(p: Path, data: dict):
         tmp.replace(p)
     await asyncio.to_thread(_write)
 
-
-async def get_stats(path: Union[str, Path] = None):
-    p = Path(path) if path else _stats_path_default
+async def get_stats():
+    p = _stats_path_default
     if not p.exists():
-        await init_stats(p)
+        await init_stats()
     return await _load(p)
 
-
-async def increment_counter(name: str, amount: int = 1, path: Union[str, Path] = None):
-    p = Path(path) if path else _stats_path_default
+async def increment_counter(name: str, amount: int = 1):
+    p = _stats_path_default
     async with _stats_lock:
-        stats = await get_stats(p)
+        stats = await get_stats()
         stats["counters"].setdefault(name, 0)
         stats["counters"][name] += amount
         stats["meta"]["last_updated"] = datetime.datetime.now().isoformat()
         await _save(p, stats)
 
-async def increment_start(user_tag: str, origin: str, amount: int = 1, path: Union[str, Path] = None):
-    p = Path(path) if path else _stats_path_default
-    print(user_tag, origin)
+async def increment_start(user_id: int, user_tag: str, origin: str):
+    p = _stats_path_default
+    user_id = str(user_id)
     async with _stats_lock:
-        stats = await get_stats(p)
+        stats = await get_stats()
 
         # check if user not exists
-        profiles_users = stats.setdefault("profiles_users", {})
-        for _, users in profiles_users.items():
-            tag = user_tag or "no_username"
-            if tag in users:
-                return  # user already counted, do not increment
+        users = stats.setdefault("users", {})
+        if user_id in users:
+            return  # user already counted, do not increment
 
+        print(user_id, user_tag, origin)
+        # save user info
+        users.setdefault(user_id, {})
+        users[user_id]["username"] = user_tag
+
+        # ===================================================
+        # ВРЕМЕННО
+        await deduplicate_usernames(user_id, user_tag, stats)
+        # ВРЕМЕННО
+        # ===================================================
+
+        # save and increment origin
         if origin is not None:
             stats["counters"].setdefault("start_origin", {})
             stats["counters"]["start_origin"].setdefault(origin, 0)
-            stats["counters"]["start_origin"][origin] += amount
+            stats["counters"]["start_origin"][origin] += 1
         
+        # increment start counter
         stats["counters"].setdefault("start", 0)
-        stats["counters"]["start"] += amount
+        stats["counters"]["start"] += 1
         
         stats["meta"]["last_updated"] = datetime.datetime.now().isoformat()
         await _save(p, stats)
 
-
-async def increment_profile_view(profile_id: str, user_tag: str, path: Union[str, Path] = None):
-    p = Path(path) if path else _stats_path_default
-
+async def increment_profile_view(profile_id: str, profile_title: str, user_id: int):
+    p = _stats_path_default
+    user_id = str(user_id)
     async with _stats_lock:
-        stats = await get_stats(p)
+        stats = await get_stats()
+
+        # ensure profile exists
+        if profile_id not in stats.get("profiles", {}):
+            stats.setdefault("profiles", {})
+            stats["profiles"].setdefault(profile_id, {})
+            stats["profiles"][profile_id]["title"] = profile_title
 
         # total count
-        stats.setdefault("profiles", {})
-        stats["profiles"].setdefault(profile_id, 0)
-        stats["profiles"][profile_id] += 1
+        stats["profiles"][profile_id].setdefault("views", 0)
+        stats["profiles"][profile_id]["views"] += 1
 
         # unique users
-        stats.setdefault("profiles_users", {})
-        stats["profiles_users"].setdefault(profile_id, [])
+        stats["profiles"][profile_id].setdefault("users", [])
 
-        tag = user_tag or "no_username"
-
-        if tag not in stats["profiles_users"][profile_id]:
-            stats["profiles_users"][profile_id].append(tag)
+        if user_id not in stats["profiles"][profile_id]["users"]:
+            stats["profiles"][profile_id]["users"].append(user_id)
 
         stats["meta"]["last_updated"] = datetime.datetime.now().isoformat()
         await _save(p, stats)
+
+async def collect_user_ids(user_id: int, user_tag: str):
+    if user_tag == "no_username":
+        return
+    p = _stats_path_default
+    user_id = str(user_id)
+    async with _stats_lock:
+        stats = await get_stats()
+
+        users = stats.setdefault("users", {})
+        if user_id in users:
+            return  # already exists
+
+        old_key = None
+        for k, v in users.items():
+            if v.get("username") == user_tag:
+                old_key = k
+                break
+
+        if old_key:
+            # переносим данные
+            users[user_id] = users.pop(old_key)
+        else:
+            # вообще новый юзер
+            # Вообще такого быть не должно, тк колбек обрабатывается после старта
+            print("Случилась фигня: новый юзер в collect_user_ids:", user_id, user_tag)
+            users[user_id] = {"username": user_tag}
+
+        stats["meta"]["last_updated"] = datetime.datetime.now().isoformat()
+
+        await _save(p, stats)
+
+
+async def deduplicate_usernames(user_id: str, user_tag: str, stats: dict):
+    users = stats.setdefault("users", {})
+
+    for k, v in users.items():
+        if v.get("username") == user_tag:
+            if k != user_id:
+                del users[k]

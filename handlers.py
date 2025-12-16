@@ -2,13 +2,17 @@ import random
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
-from data_loader import load_data
 import config
-from keyboards import build_groups_keyboard, build_profiles_keyboard, build_top5_profiles_keyboard, build_results_keyboard
-from utils import build_description, find_group_by_id, find_profile_by_id, get_top5_profiles
-
+from keyboards import *
+from utils import *
 import stats_manager
 
+from admin_features.handlers_adm import *
+
+async def collect_ids(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    user_tag = f"@{update.effective_user.username}" or "no_username"
+    await stats_manager.collect_user_ids(user_id, user_tag)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = update.message or update.callback_query.message
@@ -17,8 +21,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message and len(msg.text.split()) > 1:
         start_parameter = msg.text.split(maxsplit=1)[1]
 
+    user_id = update.effective_user.id
     user_tag = f"@{update.effective_user.username}" or "no_username"
-    await stats_manager.increment_start(user_tag, start_parameter)
+    await stats_manager.increment_start(user_id, user_tag, start_parameter)
 
     kb = [
         [InlineKeyboardButton("🔍 Об олимпиаде", callback_data="about"),
@@ -31,10 +36,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_text = messages["welcome"]
 
     if config.is_admin(update.effective_user.id):
-        welcome_text = '⚠️ Режим администратора активирован ⚠️' + "\n\n" + welcome_text
-        kb.append([InlineKeyboardButton("[adm] Статистика", callback_data="stats"),
-                  InlineKeyboardButton("[adm] Обновить конфиг", callback_data="reload")]
-        )
+        welcome_text = "⚠️ Режим администратора активирован ⚠️" + "\n\n" + welcome_text
+        kb.append([InlineKeyboardButton("⚙️ Панель администратора", callback_data="admin_panel")])
     keyboard = InlineKeyboardMarkup(kb)
 
     if update.message:
@@ -71,53 +74,6 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(random.choice(answers))
 
-async def reload_conf(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.callback_query.answer()
-    msg = update.callback_query.message
-
-    if not config.is_admin(update.effective_user.id):
-        return
-    await msg.reply_text("Перезагрузка конфигурации...")
-    profiles = load_data("profiles.json")
-    messages = load_data("messages.json")
-    results = load_data("results.json")
-    context.application.bot_data["profiles_data"] = profiles
-    context.application.bot_data["messages"] = messages
-    context.application.bot_data["results"] = results
-    await stats_manager.increment_counter("reloads")
-    await msg.reply_text("Конфигурация перезагружена.")
-
-async def get_statistics(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.callback_query.answer()
-    msg = update.callback_query.message
-
-    if not config.is_admin(update.effective_user.id):
-        return
-    await msg.reply_text("Текущая статистика использования бота")
-
-    stats = await stats_manager.get_stats()
-    counters = stats.get("counters", {})
-    profiles = stats.get("profiles", {})
-    lines = []
-    lines.append("*Counters:*")
-    for k, v in counters.items():
-        if k == "start_origin":
-            lines.append(f"- {k.replace('_', ' ')}:")
-            for origin, cnt in v.items():
-                lines.append(f"    - {origin}: {cnt}")
-        else:
-            lines.append(f"- {k.replace('_', ' ')}: {v}")
-    if profiles:
-        lines.append("\n*Profiles views (top 10):*")
-        top = sorted(profiles.items(), key=lambda x: x[1], reverse=True)[:10]
-        for pid, cnt in top:
-            lines.append(f"- {pid}: {cnt}")
-    else:
-        lines.append("\nProfiles views: none")
-
-    await msg.reply_text("\n".join(lines), parse_mode="Markdown")
-    await msg.reply_document(document=open("stats.json", "rb"))
-
 async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -135,6 +91,14 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # назад к главному меню
     if cd == "back_to_home":
         await start(update, context)
+        return
+
+    # админ-панель
+    if cd == "admin_panel":
+        kb = admin_keyboard()
+        text = '⚠️ Режим администратора активирован ⚠️'
+        text += "\n\nЗдесь вы можете управлять ботом, просматривать статистику использования и выполнять рассылку пользователям."
+        await query.edit_message_text(text, reply_markup=kb)
         return
     
     # результаты олимпиад
@@ -188,12 +152,12 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         
         # increment profile view
-        user = update.effective_user
-        user_tag = f"@{user.username}" if user.username else "no_username"
+        user_id = update.effective_user.id
 
         await stats_manager.increment_profile_view(
+            profile['id'],
             profile['name'],
-            user_tag=user_tag
+            user_id
         )
 
 
