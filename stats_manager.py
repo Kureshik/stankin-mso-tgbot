@@ -151,6 +151,14 @@ async def collect_user_ids(user_id: int, user_tag: str):
             print("Случилась фигня: новый юзер в collect_user_ids:", user_id, user_tag)
             users[user_id] = {"username": user_tag}
 
+
+        # обновление профилей
+        for profile in stats.get("profiles", {}).values():
+            if old_key and old_key in profile.get("users", []):
+                profile["users"].remove(old_key)
+                if user_id not in profile["users"]:
+                    profile["users"].append(user_id)
+
         stats["meta"]["last_updated"] = datetime.datetime.now().isoformat()
 
         await _save(p, stats)
