@@ -11,7 +11,7 @@ from admin_features.handlers_adm import *
 
 async def collect_ids(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    user_tag = f"@{update.effective_user.username}" or "no_username"
+    user_tag = update.effective_user.username or "no_username"
     await stats_manager.collect_user_ids(user_id, user_tag)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -22,7 +22,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         start_parameter = msg.text.split(maxsplit=1)[1]
 
     user_id = update.effective_user.id
-    user_tag = f"@{update.effective_user.username}" or "no_username"
+    user_tag = update.effective_user.username or "no_username"
     await stats_manager.increment_start(user_id, user_tag, start_parameter)
 
     kb = [
