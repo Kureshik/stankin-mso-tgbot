@@ -144,7 +144,6 @@ async def collect_user_ids(user_id: int, user_tag: str):
     p = _stats_path_default
     user_id = str(user_id)
     user_tag = f'@{user_tag}'
-    logger.debug(f"Collecting user ID {user_id} ({user_tag})")
 
     async with _stats_lock:
         stats = await get_stats()
@@ -152,6 +151,8 @@ async def collect_user_ids(user_id: int, user_tag: str):
         users = stats.setdefault("users", {})
         if user_id in users:
             return  # already exists
+        
+        logger.debug(f"Collecting user ID {user_id} ({user_tag})")
 
         old_key = None
         for k, v in users.items():
@@ -163,7 +164,7 @@ async def collect_user_ids(user_id: int, user_tag: str):
             # переносим данные
             users[user_id] = users.pop(old_key)
         else:
-            # вообще новый юзер
+            # новый юзер
             # Вообще такого быть не должно, тк колбек обрабатывается после старта
             print("Случилась фигня: новый юзер в collect_user_ids:", user_id, user_tag)
             users[user_id] = {"username": user_tag}
