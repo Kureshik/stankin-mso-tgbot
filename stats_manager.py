@@ -2,13 +2,14 @@ import json
 import datetime
 import asyncio
 from pathlib import Path
-from typing import Union
+from logger import logger
 
 _stats_lock = asyncio.Lock()
 _stats_path_default = Path("data/stats.json")
 
 
 async def init_stats():
+    logger.info("Initializing stats file...")
     p = _stats_path_default
     if not p.exists():
         default = {
@@ -33,6 +34,7 @@ async def init_stats():
             # }
         }
         await _save(p, default)
+        logger.info("Stats file created.")
     return p
 
 async def _load(p: Path):
@@ -56,6 +58,7 @@ async def get_stats():
     return await _load(p)
 
 async def increment_counter(name: str, amount: int = 1):
+    logger.debug(f"Incrementing counter '{name}' by {amount}")
     p = _stats_path_default
     async with _stats_lock:
         stats = await get_stats()
@@ -70,6 +73,8 @@ async def increment_start(user_id: int, user_tag: str, origin: str):
     p = _stats_path_default
     user_tag = f'@{user_tag}'
     user_id = str(user_id)
+
+    logger.debug(f"Incrementing start counter for user {user_id} ({user_tag}) from origin '{origin}'")
 
     async with _stats_lock:
         stats = await get_stats()
@@ -86,7 +91,10 @@ async def increment_start(user_id: int, user_tag: str, origin: str):
 
         # ===================================================
         # ВРЕМЕННО
-        await deduplicate_usernames(user_id, user_tag, stats)
+        for k, v in users.items():
+            if v.get("username") == user_tag:
+                if k != user_id:
+                    del users[k]
         # ВРЕМЕННО
         # ===================================================
 
@@ -104,6 +112,8 @@ async def increment_start(user_id: int, user_tag: str, origin: str):
         await _save(p, stats)
 
 async def increment_profile_view(profile_id: str, profile_title: str, user_id: int):
+    logger.debug(f"Incrementing profile view for profile '{profile_id}' by user {user_id}")
+
     p = _stats_path_default
     user_id = str(user_id)
     async with _stats_lock:
@@ -134,6 +144,7 @@ async def collect_user_ids(user_id: int, user_tag: str):
     p = _stats_path_default
     user_id = str(user_id)
     user_tag = f'@{user_tag}'
+    logger.debug(f"Collecting user ID {user_id} ({user_tag})")
 
     async with _stats_lock:
         stats = await get_stats()
@@ -169,14 +180,6 @@ async def collect_user_ids(user_id: int, user_tag: str):
 
         await _save(p, stats)
 
-
-async def deduplicate_usernames(user_id: str, user_tag: str, stats):
-    users = stats.setdefault("users", {})
-
-    for k, v in users.items():
-        if v.get("username") == user_tag:
-            if k != user_id:
-                del users[k]
 
 async def get_users_id():
     async with _stats_lock:

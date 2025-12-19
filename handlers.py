@@ -1,6 +1,7 @@
 import random
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
+from logger import logger
 
 import config
 from keyboards import *
@@ -16,13 +17,15 @@ async def collect_ids(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = update.message or update.callback_query.message
-
+    
     start_parameter = None
     if update.message and len(msg.text.split()) > 1:
         start_parameter = msg.text.split(maxsplit=1)[1]
-
+    
     user_id = update.effective_user.id
     user_tag = update.effective_user.username or "no_username"
+    logger.info(f"User @{user_tag} ({user_id}) started bot with parameter: {start_parameter}")
+    
     await stats_manager.increment_start(user_id, user_tag, start_parameter)
 
     kb = [
@@ -54,6 +57,7 @@ async def about(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     ])
     #await update.callback_query.message.delete()
+    logger.info(f"User @{update.effective_user.username} ({update.effective_user.id}) requested 'about' info.")
     messages = context.application.bot_data.get("messages")
     about_text = messages.get("about", "Информация отсутствует.")
     await update.callback_query.edit_message_text(about_text, parse_mode="Markdown", reply_markup=keyboard)
@@ -65,6 +69,9 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             from_chat_id=update.effective_chat.id,
             message_id=update.message.message_id
         )
+    
+    logger.info(f"Received text message from @{update.effective_user.username} ({update.effective_user.id})")
+
     await stats_manager.increment_counter("text_messages")
     answers = [
         "К сожалению, я не понимаю этот текст🥲 Пожалуйста, используйте кнопки меню",
@@ -95,6 +102,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # админ-панель
     if cd == "admin_panel":
+        logger.warning(f"Admin panel accessed by @{update.effective_user.username} ({update.effective_user.id})")
         kb = admin_keyboard()
         text = '⚠️ Режим администратора активирован ⚠️'
         text += "\n\nЗдесь вы можете управлять ботом, просматривать статистику использования и выполнять рассылку пользователям."
@@ -103,6 +111,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # результаты олимпиад
     if cd == "results":
+        logger.info(f"User @{update.effective_user.username} ({update.effective_user.id}) requested 'results' info.")
         messages = context.application.bot_data.get("messages")
         results_text = messages["results"]
         data = context.application.bot_data.get("results", {})
@@ -120,6 +129,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # ближайшие даты олимпиад
     if cd == "close_dates":
+        logger.info(f"User @{update.effective_user.username} ({update.effective_user.id}) requested 'close_dates' info.")
         top5_profiles = get_top5_profiles(data)
         kb = build_top5_profiles_keyboard(top5_profiles)
 
@@ -139,6 +149,9 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not group:
             await query.edit_message_text("Не найдена группа.")
             return
+        
+        logger.info(f"User @{update.effective_user.username} ({update.effective_user.id}) selected group {group['name']}.")
+
         kb = build_profiles_keyboard(group)
         text = f"Группа *{group['name']}*.\n\n{group.get('description','')}\n\nТеперь выбери профиль:"
         await query.edit_message_text(text, parse_mode="Markdown", reply_markup=kb)
@@ -150,7 +163,8 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not profile:
             await query.edit_message_text("Профиль не найден.")
             return
-        
+
+        logger.info(f"User @{update.effective_user.username} ({update.effective_user.id}) selected profile {profile['name']}.")
         # increment profile view
         user_id = update.effective_user.id
 
@@ -159,8 +173,6 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             profile['name'],
             user_id
         )
-
-
         text = build_description(profile)
 
         buttons = []

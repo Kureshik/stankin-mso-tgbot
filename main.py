@@ -1,4 +1,4 @@
-import logging
+from logger import tg_logger
 import asyncio
 from telegram import Update
 from telegram.ext import (
@@ -6,7 +6,6 @@ from telegram.ext import (
     CommandHandler,
     TypeHandler,
     MessageHandler,
-    ContextTypes,
     CallbackQueryHandler,
     filters,
 )
@@ -15,12 +14,9 @@ from data_loader import load_data
 import handlers, admin_features.handlers_adm
 import stats_manager
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
 async def _async_main():
     if not config.TG_TOKEN:
-        logger.error("TG_BOT_TOKEN is not set in env")
+        tg_logger.error("TG_BOT_TOKEN is not set in env")
         return
 
     profiles = load_data("data/profiles.json")
@@ -51,7 +47,7 @@ async def _async_main():
     await app.start()
     await app.updater.start_polling()
 
-    logger.info("Bot started — waiting forever")
+    tg_logger.info("Bot started — waiting forever")
     await asyncio.Event().wait()    
 
 
@@ -59,7 +55,7 @@ def main():
     try:
         asyncio.run(_async_main())
     except KeyboardInterrupt:
-        logger.info("Interrupted, exiting...")
+        tg_logger.info("Interrupted, exiting...")
 
 if __name__ == "__main__":
     main()
