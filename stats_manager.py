@@ -74,8 +74,6 @@ async def increment_start(user_id: int, user_tag: str, origin: str):
     user_tag = f'@{user_tag}'
     user_id = str(user_id)
 
-    logger.debug(f"Incrementing start counter for user {user_id} ({user_tag}) from origin '{origin}'")
-
     async with _stats_lock:
         stats = await get_stats()
 
@@ -85,6 +83,8 @@ async def increment_start(user_id: int, user_tag: str, origin: str):
             return  # user already counted, do not increment
 
         print(user_id, user_tag, origin)
+        logger.info(f"New user: {user_id} ({user_tag}) from origin '{origin}'")
+        logger.debug(f"Incrementing start counter for user {user_id} ({user_tag})")
         # save user info
         users.setdefault(user_id, {})
         users[user_id]["username"] = user_tag
