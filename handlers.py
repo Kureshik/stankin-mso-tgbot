@@ -22,11 +22,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message and len(msg.text.split()) > 1:
         start_parameter = msg.text.split(maxsplit=1)[1]
     
-    user_id = update.effective_user.id
-    user_tag = update.effective_user.username or "no_username"
-    logger.info(f"User @{user_tag} ({user_id}) started bot with parameter: {start_parameter}")
-    
-    await stats_manager.increment_start(user_id, user_tag, start_parameter)
+    if update.message:
+        user_id = update.effective_user.id
+        user_tag = update.effective_user.username or "no_username"
+        logger.info(f"User @{user_tag} ({user_id}) started bot with parameter: {start_parameter}")
+        
+        await stats_manager.increment_start(user_id, user_tag, start_parameter)
 
     kb = [
         [InlineKeyboardButton("🔍 Об олимпиаде", callback_data="about"),
